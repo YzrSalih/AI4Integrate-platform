@@ -6,7 +6,10 @@ import Curriculum from "./components/Curriculum";
 import ToolkitAndChat from "./components/ToolkitAndChat";
 import Footer from "./components/Footer";
 import LearningModules from "./pages/LearningModules";
+import AIToolkit from "./components/ai-toolkit/AIToolkit";
+import ChatGPTPractice from "./pages/ChatGPTPractice";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
 
 export default function HomePage() {
   return (
@@ -20,6 +23,18 @@ export default function HomePage() {
               <Route
                 path="/modules"
                 element={<LearningModules />}
+              />
+              <Route
+                path="/ai-toolkit"
+                element={<AIToolkit />}
+              />
+              <Route
+                path="/gpt-practice"
+                element={<ChatGPTPractice />}
+              />
+              <Route
+                path="/dashboard"
+                element={<Dashboard />}
               />
               <Route
                 path="/"
