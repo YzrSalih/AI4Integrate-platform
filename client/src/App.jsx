@@ -8,6 +8,7 @@ import ChatGPTPractice from "./pages/ChatGPTPractice";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Setting from "./pages/Setting";
 
 export default function HomePage() {
   return (
@@ -41,6 +42,10 @@ export default function HomePage() {
               <Route
                 path="/profile"
                 element={<Profile />}
+              />
+              <Route
+                path="/settings"
+                element={<Setting />}
               />
             </Routes>
           </main>
