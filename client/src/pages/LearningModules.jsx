@@ -204,11 +204,34 @@ const modules = [
 ];
 
 export default function LearningModules() {
-  const [selected, setSelected] = React.useState(0);
-  const [completed, setCompleted] = React.useState([]);
-  const [quizAnswers, setQuizAnswers] = React.useState({});
-  const [tab, setTab] = React.useState("video");
-  const [lang, setLang] = React.useState("en");
+  // LocalStorage anahtarları
+  const LS_COMPLETED = "learningModules_completed";
+  const LS_QUIZ = "learningModules_quizAnswers";
+  const LS_SELECTED = "learningModules_selected";
+  const LS_TAB = "learningModules_tab";
+  const LS_LANG = "learningModules_lang";
+
+  // Başlangıç değerlerini localStorage'dan oku
+  const [selected, setSelected] = React.useState(() => {
+    const val = localStorage.getItem(LS_SELECTED);
+    return val !== null ? Number(val) : 0;
+  });
+  const [completed, setCompleted] = React.useState(() => {
+    const val = localStorage.getItem(LS_COMPLETED);
+    return val ? JSON.parse(val) : [];
+  });
+  const [quizAnswers, setQuizAnswers] = React.useState(() => {
+    const val = localStorage.getItem(LS_QUIZ);
+    return val ? JSON.parse(val) : {};
+  });
+  const [tab, setTab] = React.useState(() => {
+    const val = localStorage.getItem(LS_TAB);
+    return val || "video";
+  });
+  const [lang, setLang] = React.useState(() => {
+    const val = localStorage.getItem(LS_LANG);
+    return val || "en";
+  });
 
   // Badge logic
   const badges = [];
@@ -226,14 +249,34 @@ export default function LearningModules() {
   }
 
   function handleQuizChange(qIdx, optIdx) {
-    setQuizAnswers({ ...quizAnswers, [qIdx]: optIdx });
+    setQuizAnswers(prev => {
+      const updated = { ...prev, [qIdx]: optIdx };
+      localStorage.setItem(LS_QUIZ, JSON.stringify(updated));
+      return updated;
+    });
   }
 
   function handleMarkCompleted() {
     if (!completed.includes(current.id)) {
-      setCompleted([...completed, current.id]);
+      setCompleted(prev => {
+        const updated = [...prev, current.id];
+        localStorage.setItem(LS_COMPLETED, JSON.stringify(updated));
+        return updated;
+      });
     }
   }
+
+  // selected, tab, lang değişince localStorage'a yaz
+  React.useEffect(() => {
+    localStorage.setItem(LS_SELECTED, selected);
+  }, [selected]);
+  React.useEffect(() => {
+    localStorage.setItem(LS_TAB, tab);
+  }, [tab]);
+  React.useEffect(() => {
+    localStorage.setItem(LS_LANG, lang);
+  }, [lang]);
+  // completed ve quizAnswers zaten fonksiyon içinde yazılıyor
 
   // Example reflection/apply task for each module
   const applyTasks = [
