@@ -73,13 +73,13 @@ export default function Sidebar() {
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Language, theme, notification settings</span>
             </span>
           </Link>
-          <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-800 transition group">
+          <Link to="/help-support" className={`flex items-start gap-3 p-3 rounded-lg transition group ${location.pathname.startsWith('/help-support') ? 'bg-blue-800' : 'hover:bg-blue-800'}`}> 
             <span><FaQuestionCircle className="text-pink-300 text-lg" /></span>
             <span>
               <span className="font-semibold text-base text-white group-hover:text-blue-200 block">Help & Support</span>
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">FAQ, support request, contact channels</span>
             </span>
-          </div>
+          </Link>
         </nav>
       </div>
       <div className="mt-auto">

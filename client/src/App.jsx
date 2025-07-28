@@ -9,6 +9,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Setting from "./pages/Setting";
+import HelpAndSupport from "./pages/HelpAndSupport";
 
 export default function HomePage() {
   return (
@@ -46,6 +47,10 @@ export default function HomePage() {
               <Route
                 path="/settings"
                 element={<Setting />}
+              />
+              <Route
+                path="/help-support"
+                element={<HelpAndSupport />}
               />
             </Routes>
           </main>
