@@ -1,10 +1,7 @@
 import React from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-import Hero from "./components/Hero";
-import Curriculum from "./components/Curriculum";
-import ToolkitAndChat from "./components/ToolkitAndChat";
-import Footer from "./components/Footer";
+import Home from "./pages/Home";
 import LearningModules from "./pages/LearningModules";
 import AIToolkit from "./components/ai-toolkit/AIToolkit";
 import ChatGPTPractice from "./pages/ChatGPTPractice";
@@ -38,14 +35,7 @@ export default function HomePage() {
               />
               <Route
                 path="/"
-                element={
-                  <>
-                    <Hero />
-                    <Curriculum />
-                    <ToolkitAndChat />
-                    <Footer />
-                  </>
-                }
+                element={<Home />}
               />
             </Routes>
           </main>
