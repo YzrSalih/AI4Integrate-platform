@@ -66,13 +66,13 @@ export default function Sidebar() {
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Personal info, certificates, badges</span>
             </span>
           </Link>
-          <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-800 transition group">
+          <Link to="/settings" className={`flex items-start gap-3 p-3 rounded-lg transition group ${location.pathname.startsWith('/settings') ? 'bg-blue-800' : 'hover:bg-blue-800'}`}> 
             <span><FaCog className="text-gray-300 text-lg" /></span>
             <span>
               <span className="font-semibold text-base text-white group-hover:text-blue-200 block">Settings</span>
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Language, theme, notification settings</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-800 transition group">
             <span><FaQuestionCircle className="text-pink-300 text-lg" /></span>
             <span>
