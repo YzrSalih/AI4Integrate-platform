@@ -7,6 +7,7 @@ import AIToolkit from "./components/ai-toolkit/AIToolkit";
 import ChatGPTPractice from "./pages/ChatGPTPractice";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 
 export default function HomePage() {
   return (
@@ -36,6 +37,10 @@ export default function HomePage() {
               <Route
                 path="/"
                 element={<Home />}
+              />
+              <Route
+                path="/profile"
+                element={<Profile />}
               />
             </Routes>
           </main>
