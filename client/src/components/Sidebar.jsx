@@ -10,11 +10,16 @@ import {
   FaHome,
   FaBook
 } from "react-icons/fa";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    // Burada logout işlemleri eklenebilir (örn. auth temizleme)
+    navigate('/login');
+  };
   return (
     <aside className="w-64 bg-blue-900 text-white flex flex-col p-6 space-y-4 h-screen justify-between">
       <div>
@@ -83,7 +88,10 @@ export default function Sidebar() {
         </nav>
       </div>
       <div className="mt-auto">
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition w-full">
+        <button
+          className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition w-full"
+          onClick={handleLogout}
+        >
           <FaSignOutAlt className="text-lg" />
           <span>Logout</span>
         </button>
