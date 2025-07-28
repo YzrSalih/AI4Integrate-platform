@@ -59,13 +59,13 @@ export default function Sidebar() {
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Overview: progress, module status, notifications</span>
             </span>
           </Link>
-          <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-800 transition group">
+          <Link to="/profile" className={`flex items-start gap-3 p-3 rounded-lg transition group ${location.pathname.startsWith('/profile') ? 'bg-blue-800' : 'hover:bg-blue-800'}`}> 
             <span><FaUser className="text-gray-200 text-lg" /></span>
             <span>
               <span className="font-semibold text-base text-white group-hover:text-blue-200 block">Profile</span>
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Personal info, certificates, badges</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-800 transition group">
             <span><FaCog className="text-gray-300 text-lg" /></span>
             <span>

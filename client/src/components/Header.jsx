@@ -1,5 +1,6 @@
 import React from "react";
 import { FaFolderOpen, FaLifeRing, FaPlay, FaUser } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
@@ -15,13 +16,13 @@ export default function Header() {
         </button>
       </div>
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium text-sm transition-colors shadow-sm">
+        <Link to="/modules" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium text-sm transition-colors shadow-sm">
           <FaPlay className="text-indigo-500 text-base" />
           Start Learning
-        </button>
-        <div className="bg-gray-200 w-8 h-8 rounded-full flex items-center justify-center">
-          <FaUser className="text-gray-400 text-xl" />
-        </div>
+        </Link>
+        <Link to="/profile" className="bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition">
+          <FaUser className="text-gray-400 text-2xl" />
+        </Link>
       </div>
     </header>
   );
