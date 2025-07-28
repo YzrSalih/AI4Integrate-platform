@@ -41,7 +41,38 @@ const quickAccess = [
 ];
 
 
+// Dashboard'daki ile aynı modül listesi
+const learningModules = [
+  { id: 1, title: "Introduction to AI", description: "Learn what AI is and see real-life examples." },
+  { id: 2, title: "AI in Daily Life", description: "Learn how AI impacts your everyday activities and future opportunities." },
+  { id: 3, title: "AI & Jobs of the Future", description: "Discover how AI is changing the job market and which skills are important." },
+  { id: 4, title: "Ethics & Safety in AI", description: "Understand bias, privacy, and ethical behavior in AI." },
+  { id: 5, title: "Using AI for Language Learning", description: "Practice language skills with AI-powered tools." },
+  { id: 6, title: "Build Your First Chatbot (No-code)", description: "Create a simple chatbot without coding." },
+  { id: 7, title: "Prompt Engineering Basics", description: "Learn how to write effective prompts for AI." },
+  { id: 8, title: "AI for Education", description: "Explore AI-powered learning resources and tools." },
+];
+
 export default function Home() {
+  // Dashboard ile aynı şekilde ilerleme ve modül state'i
+  const [completed, setCompleted] = React.useState([]);
+  const [selected, setSelected] = React.useState(0);
+  React.useEffect(() => {
+    const c = localStorage.getItem("learningModules_completed");
+    setCompleted(c ? JSON.parse(c) : []);
+    const s = localStorage.getItem("learningModules_selected");
+    setSelected(s !== null ? Number(s) : 0);
+  }, []);
+
+  const totalModules = learningModules.length;
+  const completedCount = completed.length;
+  const progress = Math.round((completedCount / totalModules) * 100);
+  const currentModule = learningModules[selected] || learningModules[0];
+  let status = "Not Started";
+  if (completedCount === 0) status = "Not Started";
+  else if (completedCount === totalModules) status = "Completed";
+  else status = "In Progress";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-green-100 flex flex-col">
       {/* Hero Section */}
@@ -75,50 +106,26 @@ export default function Home() {
 
       {/* Current Module and Badges - Side by Side on Desktop */}
       <section className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8 mb-20">
-        {/* Current Module Card */}
-        <div className="flex-1 bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center md:items-start border border-blue-100 min-w-[260px]">
-          <div className="text-sm text-gray-500 mb-1">Current Module</div>
-          <div className="text-2xl font-extrabold text-blue-700 mb-2">{user.currentModule.title}</div>
-          <div className="text-gray-700 mb-4 text-base">{user.currentModule.description}</div>
-          <div className="flex flex-col items-center">
-            <div className="relative w-20 h-20 mb-2">
-              <svg className="w-20 h-20" viewBox="0 0 36 36">
-                <path
-                  className="text-gray-200"
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                />
-                <path
-                  className="text-blue-500"
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeDasharray={`${user.currentModule.progress}, 100`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold text-blue-600">{user.currentModule.progress}<span className="text-base align-super">%</span></span>
-              </div>
-            </div>
-            {user.currentModule.progress === 0 ? (
-              <span className="bg-gray-200 text-gray-600 font-semibold px-5 py-1.5 rounded-lg shadow mt-2 text-sm">Not Started</span>
-            ) : user.currentModule.progress === 100 ? (
-              <span className="bg-green-500 text-white font-semibold px-5 py-1.5 rounded-lg shadow mt-2 text-sm">Completed</span>
-            ) : (
-              <Link
-                to="/modules"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-1.5 rounded-lg shadow transition mt-2 text-sm"
-              >
-                Continue Module
-              </Link>
-            )}
+        {/* Current Module Card (Dashboard ile birebir aynı) */}
+        <div className="flex-1 bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center border border-blue-100 min-w-[260px]">
+          <span className="text-sm text-gray-500 mb-1">Current Module</span>
+          <span className="text-2xl font-extrabold text-blue-700 mb-1">{currentModule.title}</span>
+          <span className="text-base text-gray-700 mb-4 text-center">{currentModule.description}</span>
+          <div className="relative flex items-center justify-center w-24 h-24 mb-2">
+            <svg className="absolute top-0 left-0" width="96" height="96">
+              <circle cx="48" cy="48" r="44" stroke="#e0e7ef" strokeWidth="8" fill="none" />
+              <circle cx="48" cy="48" r="44" stroke="#2563eb" strokeWidth="8" fill="none" strokeDasharray={2 * Math.PI * 44} strokeDashoffset={2 * Math.PI * 44 * (1 - progress / 100)} strokeLinecap="round" />
+            </svg>
+            <span className="text-2xl font-bold text-blue-700">{progress}%</span>
+          </div>
+          <div className="flex gap-3 mt-4 w-full justify-center">
+            <span className={`px-5 py-2 rounded-lg font-bold shadow text-base flex items-center ${status === "Completed" ? "bg-green-500 text-white" : status === "In Progress" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"}`}>{status}</span>
+            <a
+              href="/modules"
+              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition flex items-center"
+            >
+              Devam Et
+            </a>
           </div>
         </div>
         {/* Badges Grid */}

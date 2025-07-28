@@ -7,31 +7,75 @@ import { PiCertificateFill } from "react-icons/pi";
 import React from "react";
 
 
-// Simüle edilen güncel veriler (gerçek uygulamada context veya API'den alınır)
-const modules = [
-  { id: 1, name: "Learning Modules", status: "inprogress", current: { title: "AI in Daily Life", video: "https://www.youtube.com/embed/8hly31xKli0" } },
-  { id: 2, name: "AI Toolkit", status: "notstarted", usage: 18 }, // dakika
-  { id: 3, name: "ChatGPT Practice", status: "completed", usage: 42 }, // dakika
+
+// LearningModules verileri (modül başlıkları)
+const learningModules = [
+  { id: 1, title: "Introduction to AI", description: "Learn what AI is and see real-life examples." },
+  { id: 2, title: "AI in Daily Life", description: "Learn how AI impacts your everyday activities and future opportunities." },
+  { id: 3, title: "AI & Jobs of the Future", description: "Discover how AI is changing the job market and which skills are important." },
+  { id: 4, title: "Ethics & Safety in AI", description: "Understand bias, privacy, and ethical behavior in AI." },
+  { id: 5, title: "Using AI for Language Learning", description: "Practice language skills with AI-powered tools." },
+  { id: 6, title: "Build Your First Chatbot (No-code)", description: "Create a simple chatbot without coding." },
+  { id: 7, title: "Prompt Engineering Basics", description: "Learn how to write effective prompts for AI." },
+  { id: 8, title: "AI for Education", description: "Explore AI-powered learning resources and tools." },
 ];
 
+// Simüle edilen usage verileri (gerçek uygulamada context veya API'den alınır)
+function getUsage(key, fallback = 0) {
+  const val = localStorage.getItem(key);
+  return val ? Number(val) : fallback;
+}
+
 const Dashboard = () => {
+  // LearningModules ilerleme ve mevcut modülünü localStorage'dan oku
+  const [completed, setCompleted] = React.useState([]);
+  const [selected, setSelected] = React.useState(0);
+  const [aiToolkitUsage, setAiToolkitUsage] = React.useState(0); // dakika
+  const [gptPracticeUsage, setGptPracticeUsage] = React.useState(0); // dakika
+
+  React.useEffect(() => {
+    const c = localStorage.getItem("learningModules_completed");
+    setCompleted(c ? JSON.parse(c) : []);
+    const s = localStorage.getItem("learningModules_selected");
+    setSelected(s !== null ? Number(s) : 0);
+    setAiToolkitUsage(getUsage("aiToolkit_usage", 0));
+    setGptPracticeUsage(getUsage("gptPractice_usage", 0));
+  }, []);
+
+  const totalModules = learningModules.length;
+  const completedCount = completed.length;
+  const progress = Math.round((completedCount / totalModules) * 100);
+  const currentModule = learningModules[selected] || learningModules[0];
+  let status = "Not Started";
+  if (completedCount === 0) status = "Not Started";
+  else if (completedCount === totalModules) status = "Completed";
+  else status = "In Progress";
+
   return (
     <div className="p-8 min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-green-50">
       <h1 className="text-4xl font-extrabold mb-8 text-blue-900 tracking-tight">Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
         {/* Learning Modules Card */}
-        <div className="bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-2xl shadow-lg p-7 flex flex-col items-center relative overflow-hidden w-full">
-          <FaBook className="text-4xl mb-3 drop-shadow-lg" />
-          <span className="text-lg font-semibold mb-1">Learning Modules</span>
-          <span className="text-xl font-bold mb-2">{modules[0].current.title}</span>
-          <span className="text-base mb-4 mt-2 text-center">You're making great progress! Keep going and complete <span className="font-bold">{modules[0].current.title}</span> to unlock new content.</span>
-          <a
-            href="/modules"
-            className="mt-2 px-6 py-2 rounded-lg bg-white text-blue-700 font-bold shadow hover:bg-blue-100 transition"
-          >
-            Go to Learning Modules
-          </a>
-          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{modules[0].status}</span></span>
+        <div className="bg-white rounded-2xl shadow-lg p-7 flex flex-col items-center relative overflow-hidden w-full border border-blue-100">
+          <span className="text-sm text-gray-500 mb-1">Current Module</span>
+          <span className="text-2xl font-extrabold text-blue-700 mb-1">{currentModule.title}</span>
+          <span className="text-base text-gray-700 mb-4 text-center">{currentModule.description}</span>
+          <div className="relative flex items-center justify-center w-24 h-24 mb-2">
+            <svg className="absolute top-0 left-0" width="96" height="96">
+              <circle cx="48" cy="48" r="44" stroke="#e0e7ef" strokeWidth="8" fill="none" />
+              <circle cx="48" cy="48" r="44" stroke="#2563eb" strokeWidth="8" fill="none" strokeDasharray={2 * Math.PI * 44} strokeDashoffset={2 * Math.PI * 44 * (1 - progress / 100)} strokeLinecap="round" />
+            </svg>
+            <span className="text-2xl font-bold text-blue-700">{progress}%</span>
+          </div>
+          <div className="flex gap-3 mt-4 w-full justify-center">
+            <span className={`px-5 py-2 rounded-lg font-bold shadow text-base flex items-center ${status === "Completed" ? "bg-green-500 text-white" : status === "In Progress" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"}`}>{status}</span>
+            <a
+              href="/modules"
+              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition flex items-center"
+            >
+              Devam Et
+            </a>
+          </div>
         </div>
         {/* AI Toolkit Usage Card */}
         <div className="bg-gradient-to-tr from-purple-400 to-purple-200 text-purple-900 rounded-2xl shadow-lg p-7 flex flex-col items-center relative overflow-hidden w-full">
@@ -40,9 +84,9 @@ const Dashboard = () => {
           <div className="relative flex items-center justify-center w-24 h-24 mb-2">
             <svg className="absolute top-0 left-0" width="96" height="96">
               <circle cx="48" cy="48" r="40" stroke="#ddd6fe" strokeWidth="10" fill="none" />
-              <circle cx="48" cy="48" r="40" stroke="#a78bfa" strokeWidth="10" fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - modules[1].usage / 60)} strokeLinecap="round" />
+              <circle cx="48" cy="48" r="40" stroke="#a78bfa" strokeWidth="10" fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - aiToolkitUsage / 60)} strokeLinecap="round" />
             </svg>
-            <span className="text-2xl font-bold">{modules[1].usage}m</span>
+            <span className="text-2xl font-bold">{aiToolkitUsage}m</span>
           </div>
           <a
             href="/ai-toolkit"
@@ -50,7 +94,7 @@ const Dashboard = () => {
           >
             Go to AI Toolkit
           </a>
-          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{modules[1].status}</span></span>
+          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{aiToolkitUsage > 0 ? "In Progress" : "Not Started"}</span></span>
         </div>
         {/* ChatGPT Practice Usage Card */}
         <div className="bg-gradient-to-tr from-cyan-200 to-cyan-100 text-cyan-900 rounded-2xl shadow-lg p-7 flex flex-col items-center relative overflow-hidden w-full">
@@ -59,9 +103,9 @@ const Dashboard = () => {
           <div className="relative flex items-center justify-center w-24 h-24 mb-2">
             <svg className="absolute top-0 left-0" width="96" height="96">
               <circle cx="48" cy="48" r="40" stroke="#bae6fd" strokeWidth="10" fill="none" />
-              <circle cx="48" cy="48" r="40" stroke="#06b6d4" strokeWidth="10" fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - modules[2].usage / 60)} strokeLinecap="round" />
+              <circle cx="48" cy="48" r="40" stroke="#06b6d4" strokeWidth="10" fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - gptPracticeUsage / 60)} strokeLinecap="round" />
             </svg>
-            <span className="text-2xl font-bold">{modules[2].usage}m</span>
+            <span className="text-2xl font-bold">{gptPracticeUsage}m</span>
           </div>
           <a
             href="/gpt-practice"
@@ -69,8 +113,10 @@ const Dashboard = () => {
           >
             Go to ChatGPT Practice
           </a>
-          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{modules[2].status}</span></span>
+          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{gptPracticeUsage > 0 ? "In Progress" : "Not Started"}</span></span>
         </div>
+        {/* ...existing code... */}
+        {/* ...existing code... */}
       </div>
       {/* Goals Section */}
       <div className="bg-white rounded-2xl shadow-lg p-8 mb-10">
