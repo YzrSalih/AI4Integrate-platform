@@ -124,7 +124,7 @@ export default function Home() {
               href="/modules"
               className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition flex items-center"
             >
-              Devam Et
+              Continue 
             </a>
           </div>
         </div>

@@ -24,11 +24,11 @@ export default function Login() {
       <div className="w-full max-w-4xl flex flex-col md:flex-row shadow-2xl rounded-3xl overflow-hidden border border-blue-100">
         {/* Left panel: Welcome */}
         <div className="hidden md:flex flex-col justify-center items-center bg-gradient-to-br from-blue-700 via-blue-500 to-cyan-500 p-10 w-1/2 text-white relative">
-          <div className="absolute top-6 left-6 text-2xl font-extrabold tracking-tight">AI4Integrate</div>
+          <div className="absolute top-6 left-6 text-2xl font-extrabold tracking-tight">AI4Integration</div>
           <FaLock className="text-5xl mb-6 drop-shadow-lg" />
           <div className="text-3xl font-extrabold mb-2">Welcome Back!</div>
           <div className="text-lg opacity-90 mb-8 text-center max-w-xs">Access your AI learning platform. Please login to continue.</div>
-          <div className="text-xs opacity-60 mt-auto">© {new Date().getFullYear()} AI4Integrate</div>
+          <div className="text-xs opacity-60 mt-auto">© {new Date().getFullYear()} AI4Integration</div>
         </div>
         {/* Right panel: Login form */}
         <form onSubmit={handleSubmit} className="flex-1 bg-white flex flex-col justify-center p-10 gap-6">

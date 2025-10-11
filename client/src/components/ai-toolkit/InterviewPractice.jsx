@@ -162,7 +162,7 @@ export default function InterviewPractice() {
 
   return (
     <div className="flex flex-col items-center justify-center w-full min-h-[60vh]">
-      <div className="bg-blue-50 p-8 rounded-2xl shadow-lg w-full max-w-2xl">
+      <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 p-8 rounded-2xl shadow-lg w-full max-w-2xl">
         <div className="flex justify-between items-center mb-2">
           <h2 className="font-bold text-xl text-blue-900">Interview Practice</h2>
           <div>
@@ -188,14 +188,14 @@ export default function InterviewPractice() {
         <div className="mb-4 flex gap-2">
           <input
             type="text"
-            className="border border-blue-200 rounded-lg px-3 py-2 flex-1 text-blue-900"
+            className="border border-blue-200 rounded-lg px-3 py-2 flex-1 text-blue-900 bg-blue-50 placeholder:text-blue-400 focus:outline-blue-400"
             placeholder="Add your own question..."
             value={customQuestion}
             onChange={e => setCustomQuestion(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAddCustomQuestion()}
           />
           <button
-            className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold transition shadow"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition shadow"
             onClick={handleAddCustomQuestion}
           >Add</button>
         </div>
@@ -209,18 +209,18 @@ export default function InterviewPractice() {
               max={300}
               value={customTimer}
               onChange={e => setCustomTimer(Number(e.target.value))}
-              className="w-16 border border-blue-200 rounded px-2 py-1 text-blue-900 text-sm mr-2"
+              className="w-16 border border-blue-200 rounded px-2 py-1 text-blue-900 text-sm mr-2 bg-blue-50"
               title="Set timer (seconds)"
             />
             <button
-              className={`px-3 py-1 rounded-lg font-semibold transition shadow ${timerActive ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-400 text-white hover:bg-blue-500'}`}
+              className={`px-3 py-1 rounded-lg font-semibold transition shadow ${timerActive ? 'bg-blue-200 text-blue-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
               onClick={() => setTimerActive(true)}
               disabled={timerActive || timer === 0}
             >
               Start Timer
             </button>
             <button
-              className={`px-3 py-1 rounded-lg font-semibold transition shadow ${!timerActive ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-400 text-white hover:bg-red-500'}`}
+              className={`px-3 py-1 rounded-lg font-semibold transition shadow ${!timerActive ? 'bg-blue-200 text-blue-400 cursor-not-allowed' : 'bg-red-400 text-white hover:bg-red-500'}`}
               onClick={() => setTimerActive(false)}
               disabled={!timerActive}
             >
@@ -240,13 +240,13 @@ export default function InterviewPractice() {
             >★</button>
           </div>
           <button
-            className="text-xs text-blue-500 underline"
+            className="text-xs px-3 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-semibold"
             onClick={() => setShowStats(s => !s)}
           >{showStats ? 'Hide Stats' : 'Show Stats'}</button>
         </div>
         {/* Text Answer */}
         <textarea
-          className="border border-blue-200 bg-white p-3 mb-3 w-full rounded-lg focus:outline-blue-400 text-base resize-none placeholder:text-blue-400 text-blue-900"
+          className="border border-blue-200 bg-blue-50 p-3 mb-3 w-full rounded-lg focus:outline-blue-400 text-base resize-none placeholder:text-blue-400 text-blue-900"
           rows={4}
           placeholder="Type your answer..."
           value={answer}
@@ -279,7 +279,7 @@ export default function InterviewPractice() {
         {/* Action Buttons */}
         <div className="flex gap-3 mb-2">
           <button
-            className="bg-gradient-to-r from-blue-400 to-green-300 hover:from-blue-500 hover:to-green-400 text-white px-5 py-2 rounded-lg font-semibold transition shadow disabled:opacity-60"
+            className="bg-gradient-to-r from-blue-600 to-green-400 hover:from-blue-700 hover:to-green-500 text-white px-5 py-2 rounded-lg font-semibold transition shadow disabled:opacity-60"
             onClick={handleSubmit}
             disabled={timer === 0 || !timerActive || loading || (!answer.trim() && !audioUrl)}
           >
@@ -296,7 +296,7 @@ export default function InterviewPractice() {
         <div className="mt-4 text-blue-900 font-medium min-h-[32px]">{feedback}</div>
         {/* Stats */}
         {showStats && (
-          <div className="mt-4 bg-blue-100 rounded-lg p-4 text-blue-900 text-sm">
+          <div className="mt-4 bg-gradient-to-r from-blue-100 via-white to-blue-200 rounded-lg p-4 text-blue-900 text-sm border border-blue-200 shadow">
             <div><b>Total Answers:</b> {totalAnswers}</div>
             <div><b>Average Feedback Length:</b> {avgFeedbackLength} chars</div>
             <div><b>Last Answered:</b> {lastAnswered || '-'}</div>
