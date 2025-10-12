@@ -12,7 +12,9 @@ from pathlib import Path
 from openai import OpenAI
 from PyPDF2 import PdfReader
 from pdfminer.high_level import extract_text as pdfminer_extract
+from pdfminer.layout import LAParams
 import shutil
+import re
 
 # Optional Gemini import (lazy usage)
 try:
@@ -195,6 +197,13 @@ class ImproveReq(BaseModel):
     jdText: str = ""
 
 
+class TailorReq(BaseModel):
+    resumeText: str = ""
+    jdText: str = ""
+    analysis: str = ""
+    improvements: str = ""
+
+
 def embed(text: str):
     """Generate embeddings using Gemini or OpenAI based on provider"""
     text = (text or "")[:8000]
@@ -353,6 +362,75 @@ Return sections:
         return {"error": str(e)}
 
 
+def _normalize_extracted_text(text: str) -> str:
+    """Normalize extracted PDF text: fix NBSP, hyphenated line breaks, collapse spaces."""
+    if not text:
+        return ""
+    # Normalize line breaks and NBSP
+    t = text.replace("\r\n", "\n").replace("\r", "\n").replace("\u00a0", " ")
+    # Remove hyphen at end of line when it's a hard hyphenation (word-break)
+    t = re.sub(r"(\w)-\n(\w)", r"\1\2", t)
+    # Convert multiple spaces to single (but keep newlines)
+    t = re.sub(r"[ \t\f\v]+", " ", t)
+    # Trim spaces around newlines
+    t = re.sub(r" *\n *", "\n", t)
+    return t.strip()
+
+
+def _score_text_quality(text: str) -> float:
+    """Heuristic quality score: higher space ratio and token count indicate better spacing."""
+    if not text:
+        return 0.0
+    ln = len(text)
+    spaces = text.count(" ")
+    space_ratio = spaces / max(1, ln)
+    tokens = re.findall(r"\w+", text)
+    avg_token = (sum(len(t) for t in tokens) / max(1, len(tokens))) if tokens else 0.0
+    # Favor more spaces and reasonable token sizes; penalize very long average tokens
+    return space_ratio * 2.0 + (len(tokens) / 1000.0) - max(0.0, (avg_token - 12)) * 0.05
+
+
+def _extract_with_pdfminer(data: bytes) -> str:
+    """Extract text using pdfminer with tuned LAParams to preserve word spacing."""
+    best_text = ""
+    best_score = -1e9
+    # Try a couple of parameter sets
+    params = [
+        LAParams(char_margin=2.0, word_margin=0.2, line_margin=0.4, boxes_flow=None, all_texts=False),
+        LAParams(char_margin=2.0, word_margin=0.5, line_margin=0.4, boxes_flow=None, all_texts=False),
+        LAParams(char_margin=2.0, word_margin=0.3, line_margin=0.6, boxes_flow=0.5, all_texts=False),
+    ]
+    for lp in params:
+        try:
+            txt = pdfminer_extract(io.BytesIO(data), laparams=lp)
+            txt = _normalize_extracted_text(txt or "")
+            sc = _score_text_quality(txt)
+            if txt and sc > best_score:
+                best_text, best_score = txt, sc
+        except Exception as e:
+            print(f"pdfminer with LAParams {lp} failed: {e}")
+    return best_text
+
+
+def _extract_with_pymupdf(data: bytes) -> str:
+    """Extract text using PyMuPDF (non-OCR). Often yields better spacing than PyPDF2."""
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=data, filetype="pdf")
+        parts: List[str] = []
+        for page in doc:
+            try:
+                parts.append(page.get_text("text"))
+            except Exception:
+                # Fallback to simple text
+                parts.append(page.get_text())
+        txt = "\n".join(parts)
+        return _normalize_extracted_text(txt)
+    except Exception as e:
+        print(f"PyMuPDF text extraction failed: {e}")
+        return ""
+
+
 @app.post("/resume/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     try:
@@ -374,16 +452,32 @@ async def extract_text(file: UploadFile = File(...)):
                     return {"error": "encrypted_pdf", "detail": "This PDF is encrypted/protected and cannot be read."}
             if reader.pages:
                 text = "\n".join((page.extract_text() or "") for page in reader.pages)
+                text = _normalize_extracted_text(text)
+                # If spacing looks poor, try other extractors and choose best
+                score_pdf2 = _score_text_quality(text)
+                alt_pymupdf = _extract_with_pymupdf(data)
+                score_pymu = _score_text_quality(alt_pymupdf)
+                alt_pdfminer = _extract_with_pdfminer(data)
+                score_pdfm = _score_text_quality(alt_pdfminer)
+                best = max([(text, score_pdf2, "pypdf2"), (alt_pymupdf, score_pymu, "pymupdf"), (alt_pdfminer, score_pdfm, "pdfminer")], key=lambda x: x[1])
+                if best[0] and best[1] > 0:
+                    return {"text": best[0], "source": best[2]}
                 if text and text.strip():
-                    return {"text": text}
+                    return {"text": text, "source": "pypdf2"}
         except Exception as e:
             print(f"PyPDF2 failed: {e}")
-        # Fallback to pdfminer.six
+        # Next, try PyMuPDF direct text (non-OCR)
         try:
-            # Recreate buffer since previous readers may have advanced the stream
-            text2 = pdfminer_extract(io.BytesIO(data))
-            if text2 and text2.strip():
-                return {"text": text2}
+            alt = _extract_with_pymupdf(data)
+            if alt:
+                return {"text": alt, "source": "pymupdf"}
+        except Exception as e:
+            print(f"PyMuPDF non-OCR failed: {e}")
+        # Fallback to tuned pdfminer.six
+        try:
+            text2 = _extract_with_pdfminer(data)
+            if text2:
+                return {"text": text2, "source": "pdfminer"}
         except Exception as e:
             print(f"pdfminer failed: {e}")
         # OCR Fallback (only if Tesseract is available)
@@ -402,7 +496,7 @@ async def extract_text(file: UploadFile = File(...)):
                     txt = pytesseract.image_to_string(img)
                     if txt:
                         text_ocr_parts.append(txt)
-                ocr_text = "\n".join(text_ocr_parts).strip()
+                ocr_text = _normalize_extracted_text("\n".join(text_ocr_parts))
                 if ocr_text:
                     return {"text": ocr_text, "source": "ocr"}
             else:
@@ -439,6 +533,81 @@ def health():
         "geminiKey": bool(os.environ.get("GEMINI_API_KEY")),
         "geminiModel": resolved_model,
     }
+
+
+def _infer_section_order(resume_text: str) -> list:
+    """Infer a reasonable section order from raw resume text."""
+    txt = (resume_text or "").lower()
+    order = []
+    def add(k):
+        if k not in order:
+            order.append(k)
+    if any(w in txt for w in ["summary", "objective", "profile"]):
+        add("Summary")
+    if any(w in txt for w in ["experience", "work experience", "employment", "professional experience"]):
+        add("Experience")
+    if "projects" in txt:
+        add("Projects")
+    if any(w in txt for w in ["skills", "technical skills", "core skills"]):
+        add("Skills")
+    if any(w in txt for w in ["education", "bsc", "msc", "university", "college", "bs "]):
+        add("Education")
+    if any(w in txt for w in ["certification", "certifications"]):
+        add("Certifications")
+    if any(w in txt for w in ["languages", "language"]):
+        add("Languages")
+    # Fallback default order
+    base = ["Summary", "Experience", "Projects", "Skills", "Education", "Certifications", "Languages"]
+    for b in base:
+        add(b)
+    return order
+
+
+@app.post("/resume/tailor")
+def resume_tailor(req: TailorReq):
+    """Generate a role-tailored resume body in Markdown, keeping user's personal info intact on client side.
+    The output is ONLY markdown sections with # headings (no name/contact), suitable for rendering into a CV template.
+    """
+    try:
+        sections = _infer_section_order(req.resumeText)
+        sec_list = "\n".join(f"- {s}" for s in sections)
+        prompt = f"""
+Act as a senior resume writer and ATS expert. Rewrite the resume content to be tailored to the job description while preserving the candidate's identity and dates. Do NOT invent employment that doesn't exist; you may rephrase and reorder bullets, quantify with plausible metrics only if implied, and surface role-relevant achievements.
+
+Return ONLY Markdown with these exact top-level headings (use #):
+{sec_list}
+
+Guidelines:
+- Keep the writing concise and achievement-oriented (STAR-style). Max 5 bullets per role.
+- Keep tech and ATS keywords from the JD where truly relevant.
+- Keep original companies, roles, date ranges, education, certifications, languages.
+- Use bullet markers '-' and keep clean markdown lists. No tables.
+- Do NOT include personal header/contact; client will keep it. Output must start with a heading (e.g., '# Summary').
+
+Original Resume:
+{req.resumeText}
+
+Job Description:
+{req.jdText}
+
+Analysis (optional):
+{req.analysis or '-'}
+
+Improvements (optional):
+{req.improvements or '-'}
+"""
+        if use_gemini():
+            text = chat_with_gemini(prompt, model=os.environ.get("GEMINI_MODEL"))
+        else:
+            oc = get_openai_client()
+            chat = oc.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.3)
+            text = chat.choices[0].message.content if chat.choices else ""
+        # Ensure it starts with a heading
+        if text and not text.lstrip().startswith("#"):
+            text = f"# Summary\n{text}"
+        return {"markdown": text}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
