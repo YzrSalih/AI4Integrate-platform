@@ -6,7 +6,7 @@ export default function ModulesRoute() {
   return (
     <>
       <LearningModules />
-      {/* Diğer route'lar arasında ChatGPT Practice route'u ekleniyor */}
+      {/* Diğer route'lar arasında Gemini Practice route'u ekleniyor */}
       {/* Örnek olarak: */}
       {/* <Route path="/gpt-practice" element={<ChatGPTPractice />} /> */}
     </>

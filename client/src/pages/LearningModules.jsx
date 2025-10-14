@@ -380,7 +380,7 @@ export default function LearningModules() {
                 className="w-full h-full"
               ></iframe>
             </div>
-            {/* ChatGPT Practice suggestion */}
+            {/* Gemini Practice suggestion */}
             {completed.includes(current.id) && (
               <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
                 <div className="font-semibold text-blue-700 mb-1">{t.practice[lang] || t.practice.en}</div>

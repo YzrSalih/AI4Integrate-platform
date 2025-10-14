@@ -40,6 +40,7 @@ export default function HomePage() {
                       <Route path="/modules" element={<LearningModules />} />
                       <Route path="/ai-toolkit" element={<AIToolkit />} />
                       <Route path="/gpt-practice" element={<ChatGPTPractice />} />
+                      <Route path="/chatgpt-practice" element={<Navigate to="/gpt-practice" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/" element={<Home />} />
                       <Route path="/profile" element={<Profile />} />

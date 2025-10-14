@@ -1,10 +1,10 @@
-
 import { FaChartLine, FaTasks, FaBell, FaCheckCircle, FaTools, FaRobot, FaBook } from "react-icons/fa";
 import { BsFillBarChartFill } from "react-icons/bs";
 import { MdOutlineIncompleteCircle } from "react-icons/md";
 import { PiCertificateFill } from "react-icons/pi";
 
 import React from "react";
+import { Link } from "react-router-dom";
 
 
 
@@ -31,7 +31,7 @@ const Dashboard = () => {
   const [completed, setCompleted] = React.useState([]);
   const [selected, setSelected] = React.useState(0);
   const [aiToolkitUsage, setAiToolkitUsage] = React.useState(0); // dakika
-  const [gptPracticeUsage, setGptPracticeUsage] = React.useState(0); // dakika
+  // const [gptPracticeUsage, setGptPracticeUsage] = React.useState(0); // dakika
 
   React.useEffect(() => {
     const c = localStorage.getItem("learningModules_completed");
@@ -39,7 +39,7 @@ const Dashboard = () => {
     const s = localStorage.getItem("learningModules_selected");
     setSelected(s !== null ? Number(s) : 0);
     setAiToolkitUsage(getUsage("aiToolkit_usage", 0));
-    setGptPracticeUsage(getUsage("gptPractice_usage", 0));
+    // setGptPracticeUsage(getUsage("gptPractice_usage", 0));
   }, []);
 
   const totalModules = learningModules.length;
@@ -97,23 +97,15 @@ const Dashboard = () => {
           <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{aiToolkitUsage > 0 ? "In Progress" : "Not Started"}</span></span>
         </div>
         {/* ChatGPT Practice Usage Card */}
-        <div className="bg-gradient-to-tr from-cyan-200 to-cyan-100 text-cyan-900 rounded-2xl shadow-lg p-7 flex flex-col items-center relative overflow-hidden w-full">
-          <FaRobot className="text-4xl mb-3 drop-shadow-lg" />
-          <span className="text-lg font-semibold mb-1">ChatGPT Practice</span>
-          <div className="relative flex items-center justify-center w-24 h-24 mb-2">
-            <svg className="absolute top-0 left-0" width="96" height="96">
-              <circle cx="48" cy="48" r="40" stroke="#bae6fd" strokeWidth="10" fill="none" />
-              <circle cx="48" cy="48" r="40" stroke="#06b6d4" strokeWidth="10" fill="none" strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - gptPracticeUsage / 60)} strokeLinecap="round" />
-            </svg>
-            <span className="text-2xl font-bold">{gptPracticeUsage}m</span>
+        <div className="bg-white border border-blue-200 rounded-2xl shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <span>💬</span>
+            <span className="text-lg font-semibold mb-1">Gemini Practice</span>
           </div>
-          <a
-            href="/gpt-practice"
-            className="mt-2 px-6 py-2 rounded-lg bg-white text-cyan-700 font-bold shadow hover:bg-cyan-100 transition"
-          >
-            Go to ChatGPT Practice
-          </a>
-          <span className="text-sm font-bold mt-4">Status: <span className="capitalize">{gptPracticeUsage > 0 ? "In Progress" : "Not Started"}</span></span>
+          <div className="text-sm text-blue-800">Try example prompts and practice chatting with Gemini.</div>
+          <div className="mt-3">
+            <Link to="/gpt-practice" className="text-sm text-blue-700 underline">Go to Gemini Practice</Link>
+          </div>
         </div>
         {/* ...existing code... */}
         {/* ...existing code... */}
