@@ -48,11 +48,11 @@ export default function Sidebar() {
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">CV writing, document translation, interview simulation</span>
             </span>
           </Link>
-          {/* ChatGPT Practice */}
-          <Link to="/gpt-practice" className={`flex items-start gap-3 p-3 rounded-lg transition group ${location.pathname.startsWith('/gpt-practice') ? 'bg-blue-800' : 'hover:bg-blue-800'}`}> 
-            <span><FaRobot className="text-cyan-300 text-lg" /></span>
+          {/* Gemini Practice */}
+          <Link to="/gpt-practice" className={`flex items-start gap-3 p-3 rounded-lg transition group ${location.pathname.startsWith('/gpt-practice') ? 'bg-blue-800' : 'hover:bg-blue-800'}`}>
+            <span><FaRobot className="text-blue-300 text-lg" /></span>
             <span>
-              <span className="font-semibold text-base text-white group-hover:text-blue-200 block">ChatGPT Practice</span>
+              <span className="font-semibold text-base text-white group-hover:text-blue-200 block">Gemini Practice</span>
               <span className="text-xs text-blue-200 opacity-80 block mt-0.5">Prompt-based AI chat exercises</span>
             </span>
           </Link>

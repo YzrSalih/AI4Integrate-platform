@@ -15,6 +15,8 @@ from pdfminer.high_level import extract_text as pdfminer_extract
 from pdfminer.layout import LAParams
 import shutil
 import re
+import httpx
+from urllib.parse import quote
 
 # Optional Gemini import (lazy usage)
 try:
@@ -110,7 +112,7 @@ def resolve_gemini_text_model(preferred: Optional[str] = None) -> str:
     return "gemini-2.0-flash"
 
 
-def chat_with_gemini(prompt: str, model: Optional[str] = None) -> str:
+def chat_with_gemini(prompt: str, model: Optional[str] = None, temperature: Optional[float] = None, top_p: Optional[float] = None) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
@@ -124,7 +126,17 @@ def chat_with_gemini(prompt: str, model: Optional[str] = None) -> str:
 
     try:
         gm = _gm(resolved)
-        resp = gm.generate_content(prompt)
+        gen_cfg = None
+        if temperature is not None or top_p is not None:
+            # Build generation config dict with provided values
+            gen_cfg = {k: v for k, v in {
+                "temperature": float(max(0.0, min(1.0, temperature if temperature is not None else 0.5))),
+                "top_p": float(max(0.0, min(1.0, top_p if top_p is not None else 0.9))),
+            }.items() if v is not None}
+        if gen_cfg:
+            resp = gm.generate_content(prompt, generation_config=gen_cfg)
+        else:
+            resp = gm.generate_content(prompt)
         return getattr(resp, "text", "") or ""
     except Exception as e:
         print(f"Gemini chat error on {resolved}: {e}")
@@ -133,7 +145,11 @@ def chat_with_gemini(prompt: str, model: Optional[str] = None) -> str:
             alt = resolve_gemini_text_model("gemini-1.5-pro")
             if alt != resolved:
                 gm = _gm(alt)
-                resp = gm.generate_content(prompt)
+                gen_cfg2 = gen_cfg if 'gen_cfg' in locals() else None
+                if gen_cfg2:
+                    resp = gm.generate_content(prompt, generation_config=gen_cfg2)
+                else:
+                    resp = gm.generate_content(prompt)
                 return getattr(resp, "text", "") or ""
         except Exception as e2:
             print(f"Gemini fallback error: {e2}")
@@ -202,6 +218,26 @@ class TailorReq(BaseModel):
     jdText: str = ""
     analysis: str = ""
     improvements: str = ""
+
+
+# --- New: Context item model for passing external text context to chat ---
+class ContextItem(BaseModel):
+    excerpt: str = ""
+    sourceId: Optional[str] = None
+    name: Optional[str] = None
+
+
+# --- New: Generic chat request model for ChatGPTPractice page ---
+class ChatReq(BaseModel):
+    prompt: str = ""
+    system: Optional[str] = "You are a helpful AI assistant."
+    temperature: Optional[float] = 0.5
+    model: Optional[str] = None
+    top_p: Optional[float] = 0.9
+    context: Optional[List[ContextItem]] = None
+    # New: auto company research
+    autoResearch: Optional[bool] = False
+    company: Optional[str] = None
 
 
 def embed(text: str):
@@ -362,17 +398,146 @@ Return sections:
         return {"error": str(e)}
 
 
+# --- New: Chat endpoint to ask Gemini (fallback to OpenAI if configured) ---
+@app.post("/chat/ask")
+def chat_ask(req: ChatReq):
+    try:
+        sys_msg = req.system or "You are a helpful AI assistant."
+        # Build context string if provided
+        ctx = ""
+        if req.context:
+            try:
+                parts = []
+                for i, c in enumerate(req.context, start=1):
+                    name = (c.name or c.sourceId or f"Context {i}").strip()
+                    excerpt = (c.excerpt or "").strip()
+                    if excerpt:
+                        parts.append(f"[{name}]\n{excerpt}")
+                if parts:
+                    ctx = "\n\nContext:\n" + "\n\n".join(parts)
+            except Exception:
+                ctx = ""
+        # --- New: company research from prompt/company name
+        research_txt = ""
+        if req.autoResearch:
+            research_txt = _build_company_research(req.company, req.prompt)
+            if research_txt:
+                ctx = (ctx + ("\n\n" if ctx else "") + "Company Research:\n" + research_txt).strip()
+        user_prompt = (req.prompt or "").strip()
+        composed_user = (ctx + ("\n\nUser:\n" if user_prompt else "") + user_prompt).strip() or user_prompt
+
+        if use_gemini():
+            # Single-turn prompt composition with context
+            composed = f"{sys_msg}\n\n{composed_user}" if sys_msg else composed_user
+            text = chat_with_gemini(
+                composed,
+                model=req.model or os.environ.get("GEMINI_MODEL"),
+                temperature=float(max(0.0, min(1.0, req.temperature or 0.5))),
+                top_p=float(max(0.0, min(1.0, req.top_p or 0.9)))
+            )
+            return {"text": text}
+        else:
+            oc = get_openai_client()
+            chat = oc.chat.completions.create(
+                model=req.model or "gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": sys_msg},
+                    {"role": "user", "content": composed_user},
+                ],
+                temperature=float(max(0.0, min(1.0, req.temperature or 0.5))),
+                top_p=float(max(0.0, min(1.0, req.top_p or 0.9))),
+            )
+            text = chat.choices[0].message.content if chat.choices else ""
+            return {"text": text}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- Helpers: company extraction and Wikipedia research ---
+def _extract_company_candidates(text: str) -> List[str]:
+    text = (text or "").strip()
+    cands: List[str] = []
+    if not text:
+        return cands
+    patterns = [
+        r"\b(?:at|to|regarding|about|for)\s+([A-Z][A-Za-z0-9&'().,-]*(?:\s+[A-Z][A-Za-z0-9&'().,-]*){0,3})",
+        r"\bDear\s+([A-Z][A-Za-z0-9&'().,-]*(?:\s+[A-Z][A-ZaZ0-9&'().,-]*){0,3})",
+        r"\bSubject:\s.*?\b(?:at|to)\s+([A-Z][A-Za-z0-9&'().,-]*(?:\s+[A-Z][A-Za-z0-9&'().,-]*){0,3})",
+    ]
+    for p in patterns:
+        for m in re.finditer(p, text):
+            name = (m.group(1) or "").strip().strip(',.')
+            lowered = name.lower()
+            if any(g in lowered for g in [
+                "hiring manager", "recruiting team", "recruiting", "human resources", "hr team", "team", "manager"
+            ]):
+                continue
+            words = [w for w in name.split() if w]
+            if words and all(w[0].isupper() for w in words):
+                cands.append(name)
+    seen = set()
+    out: List[str] = []
+    for c in cands:
+        k = c.lower()
+        if k not in seen:
+            seen.add(k)
+            out.append(c)
+    return out[:2]
+
+
+def _wiki_summary(name: str) -> Optional[dict]:
+    if not name:
+        return None
+    title = quote(name.strip().replace(" ", "_"))
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
+    try:
+        r = httpx.get(url, timeout=8.0)
+        if r.status_code == 404:
+            q = quote(name.strip())
+            r2 = httpx.get(
+                f"https://en.wikipedia.org/w/api.php?action=opensearch&limit=1&namespace=0&format=json&search={q}",
+                timeout=8.0,
+            )
+            if r2.status_code == 200:
+                arr = r2.json()
+                if isinstance(arr, list) and len(arr) >= 2 and arr[1]:
+                    found = arr[1][0]
+                    return _wiki_summary(found)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print(f"Wikipedia fetch failed for {name}: {e}")
+    return None
+
+
+def _build_company_research(company: Optional[str], fallback_text: Optional[str]) -> str:
+    names: List[str] = []
+    if company and company.strip():
+        names.append(company.strip())
+    if fallback_text:
+        for n in _extract_company_candidates(fallback_text):
+            if n not in names:
+                names.append(n)
+    parts: List[str] = []
+    for nm in names[:2]:
+        js = _wiki_summary(nm)
+        if js and isinstance(js, dict):
+            title = js.get("title") or nm
+            desc = js.get("description") or ""
+            extract = js.get("extract") or ""
+            src = (js.get("content_urls", {}) or {}).get("desktop", {}).get("page") or js.get("canonicalurl") or "https://wikipedia.org"
+            snippet = f"[{title}]\nDescription: {desc}\nSummary: {extract}\nSource: {src}"
+            parts.append(snippet)
+    return "\n\n".join(parts).strip()
+
+
 def _normalize_extracted_text(text: str) -> str:
     """Normalize extracted PDF text: fix NBSP, hyphenated line breaks, collapse spaces."""
     if not text:
         return ""
-    # Normalize line breaks and NBSP
     t = text.replace("\r\n", "\n").replace("\r", "\n").replace("\u00a0", " ")
-    # Remove hyphen at end of line when it's a hard hyphenation (word-break)
     t = re.sub(r"(\w)-\n(\w)", r"\1\2", t)
-    # Convert multiple spaces to single (but keep newlines)
     t = re.sub(r"[ \t\f\v]+", " ", t)
-    # Trim spaces around newlines
     t = re.sub(r" *\n *", "\n", t)
     return t.strip()
 
@@ -386,15 +551,14 @@ def _score_text_quality(text: str) -> float:
     space_ratio = spaces / max(1, ln)
     tokens = re.findall(r"\w+", text)
     avg_token = (sum(len(t) for t in tokens) / max(1, len(tokens))) if tokens else 0.0
-    # Favor more spaces and reasonable token sizes; penalize very long average tokens
     return space_ratio * 2.0 + (len(tokens) / 1000.0) - max(0.0, (avg_token - 12)) * 0.05
 
 
 def _extract_with_pdfminer(data: bytes) -> str:
     """Extract text using pdfminer with tuned LAParams to preserve word spacing."""
+    from pdfminer.layout import LAParams  # local import for safety
     best_text = ""
     best_score = -1e9
-    # Try a couple of parameter sets
     params = [
         LAParams(char_margin=2.0, word_margin=0.2, line_margin=0.4, boxes_flow=None, all_texts=False),
         LAParams(char_margin=2.0, word_margin=0.5, line_margin=0.4, boxes_flow=None, all_texts=False),
@@ -422,7 +586,6 @@ def _extract_with_pymupdf(data: bytes) -> str:
             try:
                 parts.append(page.get_text("text"))
             except Exception:
-                # Fallback to simple text
                 parts.append(page.get_text())
         txt = "\n".join(parts)
         return _normalize_extracted_text(txt)
@@ -434,16 +597,24 @@ def _extract_with_pymupdf(data: bytes) -> str:
 @app.post("/resume/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     try:
-        if not file or not file.filename.lower().endswith('.pdf'):
-            return {"error": "invalid_file", "detail": "Please upload a PDF file."}
+        if not file:
+            return {"error": "invalid_file", "detail": "Please upload a file."}
+        fname = (file.filename or '').lower()
         data = await file.read()
         if not data:
             return {"error": "empty_file", "detail": "Uploaded file is empty."}
+        if fname.endswith('.txt'):
+            try:
+                text = data.decode('utf-8', errors='ignore')
+            except Exception:
+                text = data.decode('latin-1', errors='ignore')
+            text = _normalize_extracted_text(text)
+            return {"text": text, "source": "txt"}
+        if not fname.endswith('.pdf'):
+            return {"error": "invalid_file", "detail": "Please upload a PDF or TXT file."}
         bio = io.BytesIO(data)
-        # Try PyPDF2 first
         try:
             reader = PdfReader(bio)
-            # Handle encrypted PDFs (try empty password)
             if getattr(reader, "is_encrypted", False):
                 try:
                     reader.decrypt("")
@@ -453,7 +624,6 @@ async def extract_text(file: UploadFile = File(...)):
             if reader.pages:
                 text = "\n".join((page.extract_text() or "") for page in reader.pages)
                 text = _normalize_extracted_text(text)
-                # If spacing looks poor, try other extractors and choose best
                 score_pdf2 = _score_text_quality(text)
                 alt_pymupdf = _extract_with_pymupdf(data)
                 score_pymu = _score_text_quality(alt_pymupdf)
@@ -466,31 +636,26 @@ async def extract_text(file: UploadFile = File(...)):
                     return {"text": text, "source": "pypdf2"}
         except Exception as e:
             print(f"PyPDF2 failed: {e}")
-        # Next, try PyMuPDF direct text (non-OCR)
         try:
             alt = _extract_with_pymupdf(data)
             if alt:
                 return {"text": alt, "source": "pymupdf"}
         except Exception as e:
             print(f"PyMuPDF non-OCR failed: {e}")
-        # Fallback to tuned pdfminer.six
         try:
             text2 = _extract_with_pdfminer(data)
             if text2:
                 return {"text": text2, "source": "pdfminer"}
         except Exception as e:
             print(f"pdfminer failed: {e}")
-        # OCR Fallback (only if Tesseract is available)
         try:
             if shutil.which("tesseract") is not None:
-                # Lazy import to avoid hard dependency at startup
                 import fitz  # PyMuPDF
                 from PIL import Image
                 import pytesseract
                 text_ocr_parts = []
                 doc = fitz.open(stream=data, filetype="pdf")
                 for page in doc:
-                    # Render page to image
                     pix = page.get_pixmap(dpi=200)
                     img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                     txt = pytesseract.image_to_string(img)
@@ -510,7 +675,6 @@ async def extract_text(file: UploadFile = File(...)):
 
 @app.get("/health")
 def health():
-    # Reload .env on each call so updates are reflected without restart
     try:
         here = Path(__file__).resolve().parent
         repo_root = here.parent
@@ -519,7 +683,6 @@ def health():
     except Exception:
         load_dotenv()
     key_present = bool((os.environ.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY") or "").strip())
-    # Include resolved Gemini model for debugging
     resolved_model = None
     try:
         if os.environ.get("LLM_PROVIDER", "").lower() == "gemini" and os.environ.get("GEMINI_API_KEY") and genai is not None:
@@ -536,7 +699,6 @@ def health():
 
 
 def _infer_section_order(resume_text: str) -> list:
-    """Infer a reasonable section order from raw resume text."""
     txt = (resume_text or "").lower()
     order = []
     def add(k):
@@ -556,7 +718,6 @@ def _infer_section_order(resume_text: str) -> list:
         add("Certifications")
     if any(w in txt for w in ["languages", "language"]):
         add("Languages")
-    # Fallback default order
     base = ["Summary", "Experience", "Projects", "Skills", "Education", "Certifications", "Languages"]
     for b in base:
         add(b)
@@ -565,9 +726,6 @@ def _infer_section_order(resume_text: str) -> list:
 
 @app.post("/resume/tailor")
 def resume_tailor(req: TailorReq):
-    """Generate a role-tailored resume body in Markdown, keeping user's personal info intact on client side.
-    The output is ONLY markdown sections with # headings (no name/contact), suitable for rendering into a CV template.
-    """
     try:
         sections = _infer_section_order(req.resumeText)
         sec_list = "\n".join(f"- {s}" for s in sections)
@@ -602,7 +760,6 @@ Improvements (optional):
             oc = get_openai_client()
             chat = oc.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.3)
             text = chat.choices[0].message.content if chat.choices else ""
-        # Ensure it starts with a heading
         if text and not text.lstrip().startswith("#"):
             text = f"# Summary\n{text}"
         return {"markdown": text}

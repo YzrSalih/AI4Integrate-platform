@@ -34,7 +34,7 @@ const quickAccess = [
   },
   {
     icon: <FaRobot className="text-green-500 text-3xl group-hover:scale-125 transition-transform" />,
-    label: "ChatGPT Practice",
+    label: "Gemini Practice",
     to: "/gpt-practice",
     desc: "Practice your language skills and AI chat exercises."
   }
